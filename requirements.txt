@@ -1,4 +1,2 @@
-Flask
 requests
 BeautifulSoup4
-flask-cors
