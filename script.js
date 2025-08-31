@@ -153,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // IMPORTANT: This URL points to the serverless function on Vercel
-            const response = await fetch(`/api/app/get-car-details?name=${encodeURIComponent(car['Car Name'])}&year=${car.Year}`);
+            // AFTER
+            const response = await fetch(`/api/get-car-details?name=${encodeURIComponent(car['Car Name'])}&year=${car.Year}`);
             const data = await response.json();
 
             if (data.error) {
@@ -200,72 +201,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     displayCars(carData);
     searchBar.addEventListener('keyup', filterCars);
-});```
-
-***
-
-### **Step 5: The Backend API Code (`api/app.py`)**
-
-This is the Python web scraper. It runs as a serverless function on Vercel, fetches data from the Hot Wheels Fandom wiki, and sends it back to your frontend.
-
-**Copy this code into the `api/app.py` file:**
-
-```python
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import requests
-from bs4 import BeautifulSoup
-import urllib.parse
-
-app = Flask(__name__)
-CORS(app)
-
-def get_fandom_url(car_name, year):
-    search_query = f"Hot Wheels {car_name} {year}"
-    search_url = f"https://hotwheels.fandom.com/wiki/Special:Search?query={urllib.parse.quote(search_query)}"
-    try:
-        response = requests.get(search_url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        result_link = soup.select_one('ul.unified-search__results li.unified-search__result a')
-        if result_link and result_link['href']:
-            return result_link['href']
-        return None
-    except requests.RequestException:
-        return None
-
-def scrape_car_data(url):
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        data = {}
-        image = soup.select_one('aside.portable-infobox img')
-        data['imageUrl'] = image['src'] if image else ''
-        infobox = soup.select('aside.portable-infobox section.pi-group')
-        for group in infobox:
-            items = group.select('div.pi-item')
-            for item in items:
-                key_element = item.find('h3', class_='pi-data-label')
-                value_element = item.find('div', class_='pi-data-value')
-                if key_element and value_element:
-                    key = key_element.get_text(strip=True).replace(' ', '_').lower()
-                    value = value_element.get_text(strip=True)
-                    data[key] = value
-        return data
-    except requests.RequestException:
-        return None
-
-@app.route('/get-car-details')
-def get_car_details():
-    car_name = request.args.get('name')
-    car_year = request.args.get('year')
-    if not car_name or not car_year:
-        return jsonify({'error': 'Car name and year are required'}), 400
-    fandom_url = get_fandom_url(car_name, car_year)
-    if not fandom_url:
-        return jsonify({'error': 'Could not find a Fandom wiki page for this car.'}), 404
-    scraped_data = scrape_car_data(fandom_url)
-    if not scraped_data:
-        return jsonify({'error': 'Failed to scrape data from the Fandom page.'}), 500
-    return jsonify(scraped_data)
+});
