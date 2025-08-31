@@ -1,9 +1,11 @@
-from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-import json
+from flask import Flask, jsonify, request
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
+
+# The file name 'get-car-details.py' defines the API endpoint.
+# The Flask 'app' is the object Vercel will run.
+app = Flask(__name__)
 
 # --- Helper function to find the Fandom URL ---
 def get_fandom_url(car_name, year):
@@ -43,44 +45,26 @@ def scrape_car_data(url):
     except requests.RequestException:
         return None
 
-# --- Main Vercel Handler ---
-# This class is the entry point for Vercel's Python runtime.
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        # Parse query parameters from the URL (e.g., ?name=...&year=...)
-        parsed_path = urlparse(self.path)
-        query_params = parse_qs(parsed_path.query)
-        car_name = query_params.get('name', [None])[0]
-        car_year = query_params.get('year', [None])[0]
+# The route MUST be the root "/" because the filename itself is the route.
+# Vercel will direct requests from /api/get-car-details to this function.
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    car_name = request.args.get('name')
+    car_year = request.args.get('year')
 
-        # Handle errors
-        if not car_name or not car_year:
-            self.send_response(400)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'Car name and year are required'}).encode())
-            return
+    if not car_name or not car_year:
+        return jsonify({'error': 'Car name and year are required'}), 400
 
-        fandom_url = get_fandom_url(car_name, car_year)
-        if not fandom_url:
-            self.send_response(404)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'Could not find a Fandom wiki page.'}).encode())
-            return
-            
-        scraped_data = scrape_car_data(fandom_url)
-        if not scraped_data:
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'Failed to scrape data from the Fandom page.'}).encode())
-            return
+    fandom_url = get_fandom_url(car_name, car_year)
+    if not fandom_url:
+        return jsonify({'error': 'Could not find a Fandom wiki page.'}), 404
+        
+    scraped_data = scrape_car_data(fandom_url)
+    if not scraped_data:
+        return jsonify({'error': 'Failed to scrape data from the Fandom page.'}), 500
 
-        # Send the successful response
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*') # Add CORS header
-        self.end_headers()
-        self.wfile.write(json.dumps(scraped_data).encode())
-        return
+    # Add CORS header to the response
+    response = jsonify(scraped_data)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
