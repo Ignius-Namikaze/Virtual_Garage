@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Virtual Hot Wheels Garage</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>My Virtual Hot Wheels Garage</h1>
+        <div class="search-container">
+            <input type="text" id="search-bar" placeholder="Search by name, series, or year...">
+        </div>
+    </header>
+    <main id="garage-container"></main>
+
+    <!-- Modal Structure for displaying scraped data -->
+    <div id="modal-container" class="modal-container">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="modal-body">
+                <!-- Car details from the backend will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
