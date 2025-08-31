@@ -1,14 +1,8 @@
 {
     "builds": [
       {
-        "src": "api/app.py",
+        "src": "api/get-car-details.py",
         "use": "@vercel/python"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/api/(.*)",
-        "dest": "api/app.py"
       }
     ]
   }
