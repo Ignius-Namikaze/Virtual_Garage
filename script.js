@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             carCard.innerHTML = `
                 ${isTreasureHunt ? '<div class="th-badge">TH</div>' : ''}
-                <img src="https://via.placeholder.com/300x200.png?text=${encodeURIComponent(car['Car Name'])}" alt="${car['Car Name']}">
+                <img src="/images/${car['Sr.No.']}.jpg" alt="${car['Car Name']}" onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200.png?text=Image+Missing';">
                 <div class="car-info">
                     <h3 class="car-name">${car['Car Name']}</h3>
                     <p class="car-details"><strong>Series:</strong> ${car.Model || 'N/A'}</p>
