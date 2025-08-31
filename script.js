@@ -123,6 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
         {"Sr.No.": 120, "Car Name": "Ford Model A custom/Personnalise '31", "Model": "Dirt: Mordus de Poussiere", "Year": 2025}
     ];
 
+    // Set the total car count in the intro
+    document.getElementById('car-count').textContent = carData.length;
+
     const garageContainer = document.getElementById('garage-container');
     const searchBar = document.getElementById('search-bar');
     const modalContainer = document.getElementById('modal-container');
@@ -134,7 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
         cars.forEach(car => {
             const carCard = document.createElement('div');
             carCard.className = 'car-card';
+            // Required for the absolute positioning of the badge
+            carCard.style.position = 'relative'; 
+
+            const isTreasureHunt = car.Model.includes('(TH)');
+
             carCard.innerHTML = `
+                ${isTreasureHunt ? '<div class="th-badge">TH</div>' : ''}
                 <img src="https://via.placeholder.com/300x200.png?text=${encodeURIComponent(car['Car Name'])}" alt="${car['Car Name']}">
                 <div class="car-info">
                     <h3 class="car-name">${car['Car Name']}</h3>
@@ -149,11 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fetchAndShowDetails = async (car) => {
         modalContainer.style.display = 'flex';
-        modalBody.innerHTML = `<p class="loading-text">Scraping Fandom Wiki for details...</p>`;
+        modalBody.innerHTML = `<p class="loading-text">Firing up the engine... Scraping Fandom Wiki!</p>`;
 
         try {
-            // IMPORTANT: This URL points to the serverless function on Vercel
-            // AFTER
             const response = await fetch(`/api/get-car-details?name=${encodeURIComponent(car['Car Name'])}&year=${car.Year}`);
             const data = await response.json();
 
@@ -161,22 +168,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error);
             }
 
-            let detailsHtml = `
-                <h2>${data.name || car['Car Name']}</h2>
-                <img src="${data.imageUrl}" alt="${car['Car Name']}">
-                <div class="modal-details">
-            `;
+            // Build the details definition list
+            let detailsListHtml = '<dl>';
             for (const [key, value] of Object.entries(data)) {
                 if (key !== 'imageUrl' && key !== 'name') {
                     const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    detailsHtml += `<p><strong>${formattedKey}:</strong> ${value}</p>`;
+                    detailsListHtml += `<dt>${formattedKey}</dt><dd>${value || 'N/A'}</dd>`;
                 }
             }
-            detailsHtml += `</div>`;
-            modalBody.innerHTML = detailsHtml;
+            detailsListHtml += '</dl>';
+
+            // Create a Fandom URL for an external link
+            const fandomSearchUrl = `https://hotwheels.fandom.com/wiki/Special:Search?query=${encodeURIComponent(`Hot Wheels ${car['Car Name']} ${car['Year']}`)}`;
+
+            // Build the final modal HTML with the new layout
+            modalBody.innerHTML = `
+                <h2>${data.name || car['Car Name']}</h2>
+                <img class="modal-image" src="${data.imageUrl}" alt="${car['Car Name']}" onerror="this.src='https://via.placeholder.com/300x200.png?text=Image+Not+Found'">
+                <div class="modal-info">
+                    ${detailsListHtml}
+                    <a href="${fandomSearchUrl}" target="_blank" class="fandom-link">View on Fandom Wiki →</a>
+                </div>
+            `;
 
         } catch (error) {
-            modalBody.innerHTML = `<p class="loading-text">Error: ${error.message}</p>`;
+            modalBody.innerHTML = `<p class="loading-text" style="color: #c00;">Error: ${error.message}</p>`;
         }
     };
 
