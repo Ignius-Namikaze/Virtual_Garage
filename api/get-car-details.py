@@ -3,8 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 
-# The file name 'get-car-details.py' defines the API endpoint.
-# The Flask 'app' is the object Vercel will run.
 app = Flask(__name__)
 
 # --- Helper function to find the Fandom URL ---
@@ -22,15 +20,32 @@ def get_fandom_url(car_name, year):
     except requests.RequestException:
         return None
 
-# --- Helper function to scrape the data ---
+# --- [UPDATED] Helper function to scrape the data ---
 def scrape_car_data(url):
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         data = {}
-        image = soup.select_one('aside.portable-infobox img')
-        data['imageUrl'] = image['src'] if image else ''
+        
+        # --- ROBUST IMAGE SCRAPING LOGIC ---
+        image_url = ''
+        image_tag = soup.select_one('aside.portable-infobox img')
+        if image_tag:
+            # Prioritize 'data-src' for lazy-loaded images, fallback to 'src'
+            raw_url = image_tag.get('data-src') or image_tag.get('src')
+            if raw_url:
+                # Clean the URL: remove query parameters like '?cb=...'
+                # and any scaling info like '/scale-to-width-down/...'
+                # This gets us the direct, original image file.
+                image_url = raw_url.split('?')[0]
+                if '/revision/latest' in image_url:
+                     image_url = image_url.split('/revision/latest')[0]
+
+        data['imageUrl'] = image_url
+        # --- END OF IMAGE SCRAPING LOGIC ---
+
+        # Scrape all text data points from the infobox
         infobox = soup.select('aside.portable-infobox section.pi-group')
         for group in infobox:
             items = group.select('div.pi-item')
@@ -40,13 +55,14 @@ def scrape_car_data(url):
                 if key_element and value_element:
                     key = key_element.get_text(strip=True).replace(' ', '_').lower()
                     value = value_element.get_text(strip=True)
-                    data[key] = value
+                    # Don't overwrite the already processed image URL
+                    if key != 'image':
+                        data[key] = value
         return data
     except requests.RequestException:
         return None
 
-# The route MUST be the root "/" because the filename itself is the route.
-# Vercel will direct requests from /api/get-car-details to this function.
+# The main API route
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
@@ -64,7 +80,6 @@ def catch_all(path):
     if not scraped_data:
         return jsonify({'error': 'Failed to scrape data from the Fandom page.'}), 500
 
-    # Add CORS header to the response
     response = jsonify(scraped_data)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
